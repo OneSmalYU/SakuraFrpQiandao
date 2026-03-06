@@ -3,7 +3,7 @@ import os
 import time
 import random
 import json
-import re
+import re  # 新增：用于正则提取 JSON
 from typing import Optional, Dict
 
 from selenium.common.exceptions import TimeoutException
@@ -108,16 +108,13 @@ class CaptchaHandler:
             result_content = response.choices[0].message.content
             logger.info(f"模型原始输出: {result_content}")
             
-            # 清理并解析 JSON
-            cleaned_str = result_content.replace("'", '"')
-            # 尝试提取 JSON 内容（处理可能包含其他文本的情况）
-            json_match = json.loads(cleaned_str) if cleaned_str.startswith('{') else None
-            
-            if not json_match:
+            # ---------- 修改部分：增强 JSON 提取 ----------
+            json_data = self._extract_json(result_content)
+            if not json_data:
                 logger.error("无法从模型输出中提取有效 JSON")
                 return None
-            
-            return json_match
+            return json_data
+            # -------------------------------------------
             
         except json.JSONDecodeError as e:
             logger.error(f"JSON 解析失败: {e}")
@@ -125,6 +122,31 @@ class CaptchaHandler:
         except Exception as e:
             logger.error(f"验证码识别失败: {e}", exc_info=True)
             return None
+
+    # ---------- 新增：提取 JSON 的辅助方法 ----------
+    def _extract_json(self, text: str) -> Optional[Dict]:
+        """从可能包含额外文本的字符串中提取第一个完整的 JSON 对象"""
+        # 1. 尝试匹配 Markdown 代码块（```json ... ```）
+        code_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL | re.IGNORECASE)
+        if code_block_match:
+            json_str = code_block_match.group(1)
+        else:
+            # 2. 否则匹配第一个 { 到最后一个 } 之间的内容
+            json_match = re.search(r'(\{.*\})', text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                return None
+
+        # 清理字符串：将单引号替换为双引号（如果模型返回单引号）
+        json_str = json_str.replace("'", '"')
+        
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON 解析失败: {e}, 内容: {json_str[:200]}")
+            return None
+    # ------------------------------------------------
     
     def _click_captcha_items(self, driver, recognition_result: Dict) -> bool:
         """
