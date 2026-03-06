@@ -80,7 +80,7 @@ SakuraFrp 自动签到报告
 
 def send_serverchan(log_file='checkin.log'):
     """
-    通过 Server酱 推送消息到微信
+    通过 Server酱 推送消息到微信（只推送状态，不包含日志）
     """
     sendkey = os.getenv('SERVERCHAN_SENDKEY', '')
     if not sendkey:
@@ -88,7 +88,7 @@ def send_serverchan(log_file='checkin.log'):
         return False
 
     try:
-        # 读取日志内容
+        # 读取日志文件判断签到状态
         log_content = ""
         if os.path.exists(log_file):
             with open(log_file, 'r', encoding='utf-8') as f:
@@ -96,31 +96,23 @@ def send_serverchan(log_file='checkin.log'):
         else:
             log_content = "日志文件不存在"
 
-        # 判断签到状态
         is_success = "签到流程完成" in log_content or "验证码验证成功" in log_content
         status_emoji = "✅" if is_success else "❌"
         status_text = "成功" if is_success else "失败"
 
-        # 准备标题和内容
+        # 标题
         title = f"{status_emoji} SakuraFrp 签到{status_text} {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        
-        # 内容太长时截断（Server酱 免费版限制 32KB 以内，这里取最后 1000 字节约）
-        brief_log = log_content[-1000:] if len(log_content) > 1000 else log_content
-        content = f"""
-签到状态: {status_emoji} {status_text}
+
+        # 正文（简洁版，不含日志）
+        content = f"""签到状态: {status_emoji} {status_text}
 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+（详细日志请查看 GitHub Actions）"""
 
-【最近日志】
-{brief_log}
-
-完整日志请查看 GitHub Actions。
-        """
-
-        # 调用 Server酱 接口
+        # 发送到 Server酱
         url = f"https://sctapi.ftqq.com/{sendkey}.send"
         data = {
             "title": title,
-            "desp": content
+            "desp": content.strip()
         }
         response = requests.post(url, data=data)
         result = response.json()
