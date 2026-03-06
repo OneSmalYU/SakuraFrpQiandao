@@ -168,15 +168,21 @@ SMTP_PORT: 587
 ### 使用sever酱推送到微信
 第一步：获取 Server酱 SendKey
 打开浏览器，访问 Server酱官网。
+
 点击右上角的 “登录”，使用 GitHub 或微信扫码登录。
+
 登录后，点击 “SendKey” 菜单，您会看到一个以 SCT 开头的密钥（例如 SCT123456TestKey）。
 复制这个密钥，稍后要用。
 
 第二步：在 GitHub Secrets 中添加 SendKey
 打开您的 GitHub 仓库，点击 Settings → Secrets and variables → Actions。
+
 点击 New repository secret 按钮。
+
 在 Name 输入框中填写：SERVERCHAN_SENDKEY
+
 在 Secret 输入框中粘贴您刚才复制的 SendKey（例如 SCT123456TestKey）。
+
 点击 Add secret 保存。
 
 ## 项目文件结构
